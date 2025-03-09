@@ -1,0 +1,82 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String    @id @default(uuid())
+  name          String
+  email         String    @unique
+  password      String
+  role          String    @default("agent")
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  conversations UserConversation[]
+}
+
+model Client {
+  id            String    @id @default(uuid())
+  name          String?
+  phone         String?
+  email         String?
+  channelIds    Json?     // Almacena IDs de diferentes canales
+  tags          String[]
+  notes         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  conversations Conversation[]
+}
+
+model Channel {
+  id            String    @id @default(uuid())
+  type          String    // "whatsapp", "facebook", "instagram"
+  accountId     String    // Número de teléfono o ID de cuenta
+  name          String
+  status        String    @default("disconnected")
+  sessionData   Json?     // Datos de sesión encriptados
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  conversations Conversation[]
+}
+
+model Conversation {
+  id            String    @id @default(uuid())
+  channelId     String
+  channel       Channel   @relation(fields: [channelId], references: [id])
+  clientId      String
+  client        Client    @relation(fields: [clientId], references: [id])
+  status        String    @default("pending")
+  lastMessageAt DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  messages      Message[]
+  agents        UserConversation[]
+}
+
+model UserConversation {
+  userId        String
+  user          User      @relation(fields: [userId], references: [id])
+  conversationId String
+  conversation  Conversation @relation(fields: [conversationId], references: [id])
+  assignedAt    DateTime  @default(now())
+
+  @@id([userId, conversationId])
+}
+
+model Message {
+  id            String    @id @default(uuid())
+  conversationId String
+  conversation  Conversation @relation(fields: [conversationId], references: [id])
+  content       String
+  type          String    @default("text") // text, image, video, file
+  metadata      Json?     // Para información adicional como URLs de archivos
+  direction     String    // "inbound" o "outbound"
+  status        String    @default("sent") // sent, delivered, read, failed
+  sentAt        DateTime  @default(now())
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
